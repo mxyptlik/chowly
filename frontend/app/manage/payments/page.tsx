@@ -1,0 +1,2 @@
+"use client"; import { RequireStaffAccess } from "../../../lib/auth"; import { StaffChrome } from "../../../components/staff/staff-chrome"; import { PaymentsWorkspace } from "../../../components/staff/management-workspaces";
+export default function Page(){return <RequireStaffAccess roles={["MANAGER","TENANT_OWNER"]}><StaffChrome eyebrow="Settlement desk" title="Close service with confidence."><PaymentsWorkspace/></StaffChrome></RequireStaffAccess>}

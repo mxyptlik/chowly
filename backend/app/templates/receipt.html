@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Receipt {{receipt_number}}</title>
+  <style>
+    body{font:16px/1.5 system-ui,sans-serif;color:#1d2b21;background:#f7f2e8;margin:0;padding:24px}
+    main{max-width:680px;margin:auto;background:#fff;padding:32px;border:1px solid #d8d2c4}
+    h1{margin:0;font:700 32px Georgia,serif} h2{font-size:18px;margin-bottom:4px}
+    .muted,small{display:block;color:#5e695f} table{width:100%;border-collapse:collapse;margin:24px 0}
+    th,td{text-align:left;border-bottom:1px solid #ddd;padding:10px 4px} th:last-child,td:last-child{text-align:right}
+    .totals{margin-left:auto;max-width:320px}.totals p{display:flex;justify-content:space-between}
+    .total{font-size:20px;font-weight:700}.refund{padding:12px;background:#fff0ed;color:#8a2418}
+  </style>
+</head>
+<body><main>
+  <h1>{{tenant_name}}</h1><p>{{location_name}} · {{address}}</p>
+  <h2>Digital receipt</h2><p class="muted">{{receipt_number}} · Order {{order_id}} · {{issued_at}}</p>
+  <table><thead><tr><th>Item</th><th>Qty</th><th>Amount</th></tr></thead><tbody>{{line_rows}}</tbody></table>
+  <section class="totals">
+    <p><span>Subtotal</span><span>{{currency}} {{subtotal}}</span></p>
+    <p><span>VAT</span><span>{{currency}} {{vat}}</span></p>
+    <p><span>Service charge</span><span>{{currency}} {{service_charge}}</span></p>
+    <p class="total"><span>Total</span><span>{{currency}} {{total}}</span></p>
+  </section>
+  <p>Paid by {{payment_method}} · {{payment_reference}}</p>{{refund_block}}
+</main></body></html>

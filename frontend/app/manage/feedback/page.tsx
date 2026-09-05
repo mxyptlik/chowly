@@ -1,0 +1,2 @@
+"use client"; import { RequireStaffAccess } from "../../../lib/auth"; import { StaffChrome } from "../../../components/staff/staff-chrome"; import { FeedbackWorkspace } from "../../../components/staff/management-workspaces";
+export default function Page(){return <RequireStaffAccess roles={["MANAGER"]}><StaffChrome eyebrow="Private manager inbox" title="Turn feedback into follow-through."><FeedbackWorkspace/></StaffChrome></RequireStaffAccess>}

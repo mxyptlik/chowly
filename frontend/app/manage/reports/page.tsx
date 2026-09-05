@@ -1,0 +1,2 @@
+"use client"; import { RequireStaffAccess } from "../../../lib/auth"; import { StaffChrome } from "../../../components/staff/staff-chrome"; import { ReportsWorkspace } from "../../../components/staff/management-workspaces";
+export default function Page(){return <RequireStaffAccess roles={["MANAGER","TENANT_OWNER"]}><StaffChrome eyebrow="Operations intelligence" title="See the service story."><ReportsWorkspace/></StaffChrome></RequireStaffAccess>}

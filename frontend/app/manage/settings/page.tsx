@@ -1,0 +1,2 @@
+"use client"; import { RequireStaffAccess } from "../../../lib/auth"; import { StaffChrome } from "../../../components/staff/staff-chrome"; import { SettingsWorkspace } from "../../../components/staff/management-workspaces";
+export default function Page(){return <RequireStaffAccess roles={["TENANT_OWNER"]}><StaffChrome eyebrow="Restaurant policy" title="Set the rules of the room."><SettingsWorkspace/></StaffChrome></RequireStaffAccess>}

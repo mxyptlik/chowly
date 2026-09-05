@@ -1,0 +1,2 @@
+"use client"; import { RequireStaffAccess } from "../../../lib/auth"; import { StaffChrome } from "../../../components/staff/staff-chrome"; import { ReservationsWorkspace } from "../../../components/staff/management-workspaces";
+export default function Page(){return <RequireStaffAccess roles={["WAITER","MANAGER"]}><StaffChrome eyebrow="Guest book" title="Own every arrival."><ReservationsWorkspace/></StaffChrome></RequireStaffAccess>}

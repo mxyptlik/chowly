@@ -1,0 +1,2 @@
+"use client"; import { RequireStaffAccess } from "../../../lib/auth"; import { StaffChrome } from "../../../components/staff/staff-chrome"; import { TeamWorkspace } from "../../../components/staff/management-workspaces";
+export default function Page(){return <RequireStaffAccess roles={["MANAGER","TENANT_OWNER"]}><StaffChrome eyebrow="People operations" title="Build the team behind service."><TeamWorkspace/></StaffChrome></RequireStaffAccess>}

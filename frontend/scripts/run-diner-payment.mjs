@@ -1,0 +1,24 @@
+import { chromium } from "@playwright/test";
+import { mkdir } from "node:fs/promises";
+import { resolve } from "node:path";
+
+const [orderId, accessToken, realtimeToken] = process.argv.slice(2);
+if (!orderId || !accessToken) throw new Error("Pass order id, access token, and optionally realtime token.");
+const evidence = resolve(import.meta.dirname, "../../docs/verification/screenshots/07-lifecycle");
+await mkdir(evidence, { recursive: true });
+const browser = await chromium.launch({ headless: true });
+const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+await page.addInitScript(({ id, access, realtime }) => sessionStorage.setItem(`chowly:order-capability:${id}`, JSON.stringify({ orderId: id, accessToken: access, realtimeToken: realtime || undefined })), { id: orderId, access: accessToken, realtime: realtimeToken });
+await page.goto(`http://localhost:3000/order/${orderId}`, { waitUntil: "networkidle" });
+console.log("PAYMENT_STEP", "order-opened");
+await page.waitForTimeout(1_000);
+console.log("PAYMENT_PAGE", (await page.locator("body").innerText()).slice(0, 1400));
+await page.getByRole("button", { name: "Pay by card" }).waitFor({ timeout: 8_000 });
+console.log("PAYMENT_STEP", "served-state-loaded");
+await page.getByRole("button", { name: "Pay by card" }).click();
+console.log("PAYMENT_STEP", "card-clicked");
+await page.getByText("Mock payment confirmed. Your receipt is ready.").waitFor();
+await page.getByText("Digital receipt").waitFor();
+await page.screenshot({ path: resolve(evidence, "05-diner-paid-receipt.png"), fullPage: true });
+console.log(JSON.stringify({ body: (await page.locator("body").innerText()).slice(0, 1500) }, null, 2));
+await browser.close();

@@ -1,0 +1,28 @@
+import { chromium } from "@playwright/test";
+import { mkdir } from "node:fs/promises";
+import { resolve } from "node:path";
+
+const evidence = resolve(import.meta.dirname, "../../docs/verification/screenshots/07-lifecycle");
+await mkdir(evidence, { recursive: true });
+const browser = await chromium.launch({ headless: true });
+const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+await page.goto("http://localhost:3000/login");
+await page.getByLabel("Work email").fill("pilot1.waiter@demo.chowly.ng");
+await page.getByLabel("Password").fill("ChowlyDemo!2026");
+await page.getByRole("button", { name: /sign in to chowly/i }).click();
+await page.waitForURL("**/ops");
+console.log("WAITER_STEP", "ops-loaded");
+const order = page.locator(".order-card").filter({ hasText: "Submitted" }).first();
+await page.waitForTimeout(1_000);
+console.log("WAITER_QUEUE", JSON.stringify({ count: await page.locator(".order-card").count(), body: (await page.locator("body").innerText()).slice(-1800) }));
+await order.waitFor({ timeout: 5_000 });
+await order.click();
+console.log("WAITER_STEP", "order-selected");
+await page.getByRole("button", { name: "Accept" }).click();
+console.log("WAITER_STEP", "accept-clicked");
+await page.getByText("Acceptance confirmed.").waitFor();
+await page.getByRole("button", { name: "Set wait" }).click();
+await page.getByText("Wait time confirmed.").waitFor();
+await page.screenshot({ path: resolve(evidence, "02-waiter-accepted-and-wait-time.png"), fullPage: true });
+console.log(JSON.stringify({ status: await page.locator(".order-summary").innerText(), text: (await page.locator("body").innerText()).slice(-1200) }, null, 2));
+await browser.close();

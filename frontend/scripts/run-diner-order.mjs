@@ -1,0 +1,32 @@
+import { chromium } from "@playwright/test";
+import { mkdir } from "node:fs/promises";
+import { resolve } from "node:path";
+
+const menuUrl = process.argv[2];
+if (!menuUrl) throw new Error("Pass the daily QR menu URL as the first argument.");
+const evidence = resolve(import.meta.dirname, "../../docs/verification/screenshots/07-lifecycle");
+await mkdir(evidence, { recursive: true });
+const browser = await chromium.launch({ headless: true });
+const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+page.on("response", async response => {
+  if (response.url().includes("/orders")) console.log("ORDER_RESPONSE", response.status(), await response.text());
+});
+console.log("ORDER_STEP", "opening-menu");
+await page.goto(menuUrl, { waitUntil: "networkidle" });
+console.log("ORDER_STEP", "opening-item");
+await page.getByRole("button", { name: /view hibiscus zobo fizz/i }).click();
+console.log("ORDER_STEP", "adding-item");
+await page.getByRole("button", { name: /add to this order/i }).click();
+console.log("ORDER_STEP", "opening-cart");
+await page.getByRole("button", { name: /open order, 1 items/i }).click();
+await page.getByLabel("Your name").fill("Browser Lifecycle Guest");
+await page.getByLabel("Phone number").fill("08090000001");
+await page.getByLabel("Email").fill("browser.lifecycle@example.com");
+await page.getByRole("button", { name: "Send for staff acceptance" }).click();
+console.log("ORDER_STEP", "submitted");
+await page.waitForURL("**/order/*");
+const orderUrl = page.url();
+await page.getByText("Order sent.").waitFor({ timeout: 45_000 });
+await page.screenshot({ path: resolve(evidence, "01-diner-order-submitted.png"), fullPage: true });
+console.log(JSON.stringify({ orderUrl, body: (await page.locator("body").innerText()).slice(0, 1200) }, null, 2));
+await browser.close();

@@ -1,0 +1,21 @@
+import { chromium } from "@playwright/test";
+import { mkdir } from "node:fs/promises";
+import { resolve } from "node:path";
+
+const evidence = resolve(import.meta.dirname, "../../docs/verification/screenshots/07-lifecycle");
+await mkdir(evidence, { recursive: true });
+const browser = await chromium.launch({ headless: true });
+const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+await page.goto("http://localhost:3000/login");
+await page.getByLabel("Work email").fill("pilot1.waiter@demo.chowly.ng");
+await page.getByLabel("Password").fill("ChowlyDemo!2026");
+await page.getByRole("button", { name: /sign in to chowly/i }).click();
+await page.waitForURL("**/ops");
+const ready = page.locator(".order-card").filter({ hasText: "Ready for service" }).first();
+await ready.waitFor();
+await ready.click();
+await page.getByRole("button", { name: "Mark served" }).click();
+await page.getByText("Service confirmed.").waitFor();
+await page.screenshot({ path: resolve(evidence, "04-waiter-served.png"), fullPage: true });
+console.log(JSON.stringify({ detail: await page.locator(".order-summary").innerText(), body: (await page.locator("body").innerText()).slice(-1000) }, null, 2));
+await browser.close();

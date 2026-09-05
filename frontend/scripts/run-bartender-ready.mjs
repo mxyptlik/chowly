@@ -1,0 +1,30 @@
+import { chromium } from "@playwright/test";
+import { mkdir } from "node:fs/promises";
+import { resolve } from "node:path";
+
+const evidence = resolve(import.meta.dirname, "../../docs/verification/screenshots/07-lifecycle");
+await mkdir(evidence, { recursive: true });
+const browser = await chromium.launch({ headless: true });
+const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+page.on("response", async response => {
+  if (response.url().includes("/staff/prep")) console.log("PREP_RESPONSE", response.status(), await response.text());
+});
+await page.goto("http://localhost:3000/login");
+await page.getByLabel("Work email").fill("pilot1.bartender@demo.chowly.ng");
+await page.getByLabel("Password").fill("ChowlyDemo!2026");
+await page.getByRole("button", { name: /sign in to chowly/i }).click();
+await page.waitForURL("**/prep");
+console.log("BARTENDER_STEP", "prep-loaded");
+const zobo = page.locator(".prep-card").filter({ hasText: "Hibiscus Zobo Fizz" }).first();
+await page.waitForTimeout(1_000);
+console.log("BARTENDER_QUEUE", JSON.stringify({ cards: await page.locator(".prep-card").count(), body: (await page.locator("body").innerText()).slice(-1600) }));
+await zobo.waitFor({ timeout: 5_000 });
+console.log("BARTENDER_STEP", "line-found");
+await zobo.getByRole("button", { name: "Claim line" }).click();
+console.log("BARTENDER_STEP", "claim-clicked");
+await page.getByText(/claimed Hibiscus Zobo Fizz/).waitFor();
+await zobo.getByRole("button", { name: "Mark ready" }).click();
+await page.getByText("Hibiscus Zobo Fizz is ready for service.").waitFor();
+await page.screenshot({ path: resolve(evidence, "03-bartender-line-ready.png"), fullPage: true });
+console.log(JSON.stringify({ body: (await page.locator("body").innerText()).slice(-1400) }, null, 2));
+await browser.close();

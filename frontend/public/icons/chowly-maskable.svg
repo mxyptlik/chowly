@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Chowly</title>
+  <rect width="512" height="512" fill="#172721"/>
+  <circle cx="256" cy="256" r="132" fill="#f4efe5"/>
+  <path d="M324 199c-17-17-40-27-65-27-51 0-93 39-93 86s42 86 93 86c25 0 48-9 65-26" fill="none" stroke="#29473b" stroke-width="35" stroke-linecap="round"/>
+  <circle cx="343" cy="161" r="21" fill="#c74931"/>
+</svg>

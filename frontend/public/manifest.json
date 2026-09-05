@@ -1,0 +1,40 @@
+{
+  "id": "/",
+  "name": "Chowly Table Service",
+  "short_name": "Chowly",
+  "description": "QR dining and restaurant operations for thoughtful service.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#f4efe5",
+  "theme_color": "#172721",
+  "categories": ["business", "food"],
+  "icons": [
+    {
+      "src": "/icons/chowly.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/chowly-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Service floor",
+      "short_name": "Service",
+      "url": "/ops"
+    },
+    {
+      "name": "Preparation queue",
+      "short_name": "Prep",
+      "url": "/prep"
+    }
+  ]
+}

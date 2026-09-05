@@ -1,0 +1,49 @@
+.env
+.env.*
+!.env.example
+
+# Python environments, bytecode, tooling caches, and local SQLite databases.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.venv/
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.sqlite-journal
+
+# Node/Next generated dependencies, builds, caches, and local diagnostics.
+node_modules/
+.next/
+.turbo/
+.eslintcache
+*.tsbuildinfo
+playwright-report/
+test-results/
+blob-report/
+
+# Local containers, generated coverage, and temporary working files.
+*.log
+coverage/
+htmlcov/
+dist/
+tmp/
+output/
+_doc_review/
+
+# Generated browser-verification artifacts. Keep scripts and Markdown runbooks.
+docs/verification/screenshots/
+docs/verification/*-results.json
+
+# OS/editor noise.
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+backend/smoke.db
+backend/chowly.db

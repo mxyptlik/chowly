@@ -16,6 +16,7 @@ __pycache__/
 
 # Node/Next generated dependencies, builds, caches, and local diagnostics.
 node_modules/
+.pnpm-store/
 .next/
 .turbo/
 .eslintcache

@@ -25,6 +25,7 @@ from app.auth import (
 )
 from app.auth_schemas import (
     ActiveLocationIn,
+    DemoSessionIn,
     RealtimeGrantIn,
     RealtimeGrantOut,
     StaffInviteAcceptIn,
@@ -117,6 +118,56 @@ def login(
     _set_session_cookie(response, current)
     return _session_out(current)
 
+@router.post("/demo-session", response_model=StaffSessionOut)
+def create_demo_session(
+    payload: DemoSessionIn,
+    response: Response,
+    db: Session = Depends(get_db),
+) -> StaffSessionOut:
+    """
+    Issue a normal staff session for one predefined assessor persona.
+
+    This endpoint is unavailable unless CHOWLY_DEMO_MODE=true.
+    It never exposes the demo password and never permits PLATFORM_ADMIN.
+    """
+    settings = get_settings()
+
+    if not settings.demo_mode:
+        raise HTTPException(
+            status_code=404,
+            detail="Demo access is not enabled.",
+        )
+
+    role = StaffRole(payload.persona)
+
+    email = (
+        f"pilot{settings.demo_tenant_ordinal}."
+        f"{role.value.lower()}@demo.chowly.ng"
+    )
+
+    account = db.scalar(
+        select(StaffAccount).where(
+            StaffAccount.email == email
+        )
+    )
+
+    if account is None or not account.is_active:
+        raise HTTPException(
+            status_code=503,
+            detail="The requested demo persona is unavailable.",
+        )
+
+    current = current_staff_from_account(db, account)
+
+    if role not in current.roles:
+        raise HTTPException(
+            status_code=503,
+            detail="The requested demo persona is not configured correctly.",
+        )
+
+    _set_session_cookie(response, current)
+
+    return _session_out(current)
 
 @router.post(
     "/logout", status_code=status.HTTP_204_NO_CONTENT, response_model=None

@@ -84,8 +84,9 @@ def _ensure_pilot_staff(
 def seed(db: Session) -> None:
     """Create exactly seven isolated demo tenants in an empty dev database."""
     settings = get_settings()
-    if not settings.is_development:
+    if not (settings.is_development or settings.demo_mode):
         return
+    
     password_hash = hash_password(DEMO_PASSWORD)
     accepted_at = datetime.now(UTC)
     if not db.scalar(select(StaffAccount.id).where(StaffAccount.email == "platform.admin@demo.chowly.ng")):

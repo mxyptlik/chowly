@@ -7,7 +7,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.models import StaffRole
-
+from typing import Literal
 
 class StaffLocationOut(BaseModel):
     id: str
@@ -24,7 +24,16 @@ class StaffSessionOut(BaseModel):
     active_tenant_id: str | None = None
     active_location_id: str | None = None
 
+class DemoSessionIn(BaseModel):
+    """A tightly-scoped assessor persona; platform admin is intentionally excluded."""
 
+    persona: Literal[
+        "WAITER",
+        "CHEF",
+        "BARTENDER",
+        "MANAGER",
+        "TENANT_OWNER",
+    ]
 class StaffLoginIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=10, max_length=72)

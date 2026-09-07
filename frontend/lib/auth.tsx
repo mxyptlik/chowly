@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { apiClient, ApiError } from "./api";
 import { canAccess, type AccessRequirement } from "./auth-policy";
 import type { StaffSession } from "./contracts";
+import type { DemoPersona } from "./demo-personas";
 
 type AuthState = {
   session: StaffSession | null;
@@ -12,6 +13,7 @@ type AuthState = {
   error: string | null;
   refresh: () => Promise<StaffSession | null>;
   login: (email: string, password: string) => Promise<StaffSession>;
+  demoLogin: (persona: DemoPersona) => Promise<StaffSession>;
   logout: () => Promise<void>;
   selectLocation: (locationId: string) => Promise<void>;
 };
@@ -59,6 +61,17 @@ export function StaffAuthProvider({ children }: { children: React.ReactNode }) {
       const current = await apiClient.post<StaffSession>("/staff/auth/login", { email, password });
       setSession(current);
       setError(null);
+      return current;
+    },
+    async demoLogin(persona) {
+      const current = await apiClient.post<StaffSession>(
+        "/staff/auth/demo-session",
+        { persona },
+      );
+
+      setSession(current);
+      setError(null);
+
       return current;
     },
     async logout() {

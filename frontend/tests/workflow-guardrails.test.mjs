@@ -29,7 +29,7 @@ test("direct staff routes enforce their role boundaries before mounting workspac
   assert.match(verifyReservation, /RequireStaffAccess/);
   assert.match(verifyReservation, /roles=\{\["WAITER",\s*"MANAGER"\]\}/);
   assert.match(admin, /RequireStaffAccess/);
-  assert.match(admin, /roles=\{\["PLATFORM_ADMIN"\]\}/);
+  assert.match(admin, /roles=\{\["PLATFORM_ADMIN", "TENANT_OWNER"\]\}/);
   assert.match(admin, /Platform administration restricted/);
 });
 

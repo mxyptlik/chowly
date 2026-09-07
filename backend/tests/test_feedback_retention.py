@@ -398,6 +398,29 @@ def test_complaints_are_post_service_and_may_be_tied_to_a_specific_rated_line(ha
     ).status_code == 404
 
 
+def test_delayed_order_allows_immediate_rating_and_complaint(harness: dict) -> None:
+    client = harness["client"]
+    ids = harness["ids"]
+    with harness["Session"]() as db:
+        order = db.get(Order, ids["submitted"])
+        order.status = OrderStatus.DELAYED
+        order.delay_reason = "Longer than expected"
+        order.delayed_at = NOW
+        db.commit()
+    rating = client.post(
+        f"/api/v1/public/orders/{ids['submitted']}/ratings/order",
+        headers=public_headers(SUBMITTED_TOKEN),
+        json={"score": 2, "comment": "The wait is too long"},
+    )
+    assert rating.status_code == 201, rating.text
+    complaint = client.post(
+        f"/api/v1/public/orders/{ids['submitted']}/complaints",
+        headers=public_headers(SUBMITTED_TOKEN),
+        json={"subject": "Delayed order", "detail": "Please provide an update", "order_rating_id": rating.json()["id"]},
+    )
+    assert complaint.status_code == 201, complaint.text
+
+
 def test_only_assigned_manager_can_see_and_resolve_complaints_with_audit(harness: dict) -> None:
     client = harness["client"]
     ids = harness["ids"]

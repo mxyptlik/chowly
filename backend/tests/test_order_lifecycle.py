@@ -315,6 +315,36 @@ def test_public_orders_require_customer_snapshot_prices_token_and_never_merge(ha
     assert any(event.payload["change"] == "submitted" for event in events)
 
 
+def test_optional_preparer_assignment_and_delayed_state(harness: dict) -> None:
+    client = harness["client"]
+    order = submit(harness, lines=[
+        {"menu_item_id": harness["ids"]["food"], "quantity": 1, "modifier_option_ids": [harness["ids"]["option"]]},
+        {"menu_item_id": harness["ids"]["drink"], "quantity": 1},
+    ])
+    login(client, "waiter1@orders.example.com")
+    preparers = client.get("/api/v1/staff/preparers").json()
+    assert {row["id"] for row in preparers} == {harness["ids"]["chef"], harness["ids"]["bartender"]}
+    accepted = client.post(
+        f"/api/v1/staff/orders/{order['id']}/accept",
+        json={"expected_version": order["version"], "estimated_wait_minutes": 30, "chef_id": harness["ids"]["chef"], "bartender_id": harness["ids"]["bartender"]},
+    )
+    assert accepted.status_code == 200, accepted.text
+    assert {line["status"] for line in accepted.json()["lines"]} == {"CLAIMED"}
+    delayed = client.post(
+        f"/api/v1/staff/orders/{order['id']}/delay",
+        json={"expected_version": accepted.json()["version"], "reason": "Kitchen equipment recovery", "estimated_wait_minutes": 45},
+    )
+    assert delayed.status_code == 200, delayed.text
+    assert delayed.json()["status"] == "DELAYED"
+    assert delayed.json()["delay_reason"] == "Kitchen equipment recovery"
+    public = client.get(f"/api/v1/public/orders/{order['id']}", headers=public_headers(order))
+    assert public.json()["diner_status"] == "DELAYED"
+    login(client, "chef@orders.example.com")
+    assert [row["queue_destination"] for row in client.get("/api/v1/staff/prep").json()] == ["KITCHEN"]
+    login(client, "bar@orders.example.com")
+    assert [row["queue_destination"] for row in client.get("/api/v1/staff/prep").json()] == ["BAR"]
+
+
 def test_diner_preacceptance_switch_cancel_stale_conflict_and_postacceptance_denial(harness: dict) -> None:
     client = harness["client"]
     order = submit(harness)

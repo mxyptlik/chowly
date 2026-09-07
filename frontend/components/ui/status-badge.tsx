@@ -3,6 +3,7 @@ const labels: Record<string, string> = {
   PENDING_SYNC: "Pending sync",
   SUBMITTED: "Submitted",
   PREPARING: "Preparing",
+  DELAYED: "Delayed",
   READY_FOR_SERVICE: "Ready for service",
   SERVED: "Served",
   PAID: "Paid",

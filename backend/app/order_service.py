@@ -542,6 +542,8 @@ def accept_order(
     order: Order,
     current: CurrentStaff,
     waiter_id: str | None,
+    chef_id: str | None,
+    bartender_id: str | None,
     estimated_wait_minutes: int,
     expected_version: str,
 ) -> None:
@@ -566,6 +568,38 @@ def accept_order(
     order.estimated_wait_minutes = estimated_wait_minutes
     order.status = OrderStatus.PREPARING
     order.accepted_at = now
+    assignments: dict[QueueDestination, str | None] = {
+        QueueDestination.KITCHEN: chef_id,
+        QueueDestination.BAR: bartender_id,
+    }
+    required_roles = {
+        QueueDestination.KITCHEN: StaffRole.CHEF,
+        QueueDestination.BAR: StaffRole.BARTENDER,
+    }
+    for destination, staff_id in assignments.items():
+        if not staff_id:
+            continue
+        eligible = db.scalar(
+            select(StaffAccount)
+            .join(StaffLocationAssignment, StaffLocationAssignment.staff_id == StaffAccount.id)
+            .join(StaffRoleAssignment, StaffRoleAssignment.staff_id == StaffAccount.id)
+            .where(
+                StaffAccount.id == staff_id,
+                StaffAccount.tenant_id == order.tenant_id,
+                StaffAccount.is_active.is_(True),
+                StaffLocationAssignment.tenant_id == order.tenant_id,
+                StaffLocationAssignment.location_id == order.location_id,
+                StaffRoleAssignment.tenant_id == order.tenant_id,
+                StaffRoleAssignment.role == required_roles[destination],
+            )
+        )
+        if eligible is None:
+            raise OrderDomainError(f"Selected {required_roles[destination].value.lower()} is not available at this location.", status_code=422)
+        for line in order.lines:
+            if line.queue_destination == destination and line.status == LineStatus.PENDING:
+                line.status = LineStatus.CLAIMED
+                line.claimed_by_id = staff_id
+                line.claimed_at = now
     touch(order, now=now)
     if order.table_id:
         table = db.scalar(
@@ -589,6 +623,8 @@ def accept_order(
             "status": order.status,
             "owner_id": waiter.id,
             "estimated_wait_minutes": estimated_wait_minutes,
+            "chef_id": chef_id,
+            "bartender_id": bartender_id,
         },
     )
     stage_order_changed(db, order, change="accepted")
@@ -1023,7 +1059,7 @@ def set_wait_time(
 ) -> None:
     assert_expected_version(order, expected_version)
     assert_order_operator(current, location_id=order.location_id, owner_id=order.owner_id)
-    if order.status not in (OrderStatus.PREPARING, OrderStatus.READY):
+    if order.status not in (OrderStatus.PREPARING, OrderStatus.DELAYED, OrderStatus.READY):
         raise OrderDomainError("Wait time can be changed only for an accepted active order.")
     before = {"estimated_wait_minutes": order.estimated_wait_minutes}
     order.estimated_wait_minutes = minutes
@@ -1041,6 +1077,31 @@ def set_wait_time(
     stage_order_changed(db, order, change="wait_time_changed")
 
 
+def delay_order(
+    db: Session,
+    *,
+    order: Order,
+    current: CurrentStaff,
+    reason: str,
+    estimated_wait_minutes: int | None,
+    expected_version: str,
+) -> None:
+    assert_expected_version(order, expected_version)
+    assert_order_operator(current, location_id=order.location_id, owner_id=order.owner_id)
+    if order.status not in (OrderStatus.PREPARING, OrderStatus.DELAYED):
+        raise OrderDomainError("Only a preparing order can be marked delayed.")
+    now = datetime.now(UTC)
+    before = {"status": order.status, "estimated_wait_minutes": order.estimated_wait_minutes}
+    order.status = OrderStatus.DELAYED
+    order.delay_reason = reason.strip()
+    order.delayed_at = now
+    if estimated_wait_minutes is not None:
+        order.estimated_wait_minutes = estimated_wait_minutes
+    touch(order, now=now)
+    add_audit(db, order=order, event_type="ORDER_DELAYED", actor_id=current.staff_id, reason=reason, before=before, after={"status": order.status, "estimated_wait_minutes": order.estimated_wait_minutes})
+    stage_order_changed(db, order, change="delayed")
+
+
 def claim_line(
     db: Session,
     *,
@@ -1053,7 +1114,7 @@ def claim_line(
     assert_station_access(
         current, location_id=line.location_id, destination=line.queue_destination
     )
-    if order.status != OrderStatus.PREPARING:
+    if order.status not in (OrderStatus.PREPARING, OrderStatus.DELAYED):
         raise OrderDomainError("Only lines on preparing orders can be claimed.")
     now = datetime.now(UTC)
     result = db.execute(
@@ -1203,7 +1264,7 @@ def recommended_wait_minutes(db: Session, location_id: str) -> int:
         db.scalar(
             select(func.count(Order.id)).where(
                 Order.location_id == location_id,
-                Order.status.in_((OrderStatus.PREPARING, OrderStatus.READY)),
+                Order.status.in_((OrderStatus.PREPARING, OrderStatus.DELAYED, OrderStatus.READY)),
             )
         )
         or 0
@@ -1257,6 +1318,8 @@ def public_order_payload(db: Session, order: Order) -> dict[str, Any]:
         "table_label": table.label if table else None,
         "transfer_notice": order.transfer_notice,
         "estimated_wait_minutes": order.estimated_wait_minutes,
+        "delay_reason": order.delay_reason,
+        "delayed_at": order.delayed_at,
         "recommended_wait_minutes": recommended_wait_minutes(db, order.location_id),
         "wait_time_suggestions": list(WAIT_TIME_SUGGESTIONS),
         "currency": order.currency,

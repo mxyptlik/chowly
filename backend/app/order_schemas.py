@@ -8,7 +8,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
-from app.models import LineStatus, OrderSource, OrderStatus, QueueDestination, ServiceMode
+from app.models import LineStatus, OrderSource, OrderStatus, QueueDestination, ServiceMode, StaffRole
 from app.menu_schemas import MenuItemOut
 
 
@@ -97,7 +97,20 @@ class PublicCancelIn(VersionedMutationIn):
 
 class AcceptOrderIn(VersionedMutationIn):
     waiter_id: str | None = None
+    chef_id: str | None = None
+    bartender_id: str | None = None
     estimated_wait_minutes: int = Field(ge=1, le=180)
+
+
+class DelayOrderIn(VersionedMutationIn):
+    reason: str = Field(min_length=3, max_length=500)
+    estimated_wait_minutes: int | None = Field(default=None, ge=1, le=180)
+
+
+class PreparerOut(BaseModel):
+    id: str
+    name: str
+    roles: list[StaffRole]
 
 
 class ReasonedMutationIn(VersionedMutationIn):
@@ -201,6 +214,8 @@ class PublicOrderOut(BaseModel):
     table_label: str | None
     transfer_notice: str | None
     estimated_wait_minutes: int | None
+    delay_reason: str | None
+    delayed_at: datetime | None
     recommended_wait_minutes: int
     wait_time_suggestions: list[int]
     currency: str

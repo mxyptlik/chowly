@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from app.auth import CurrentStaff
@@ -90,7 +90,11 @@ def create_prep_router(event_bus: EventBus | None = None) -> APIRouter:
                 OrderLine.location_id == location,
                 OrderLine.queue_destination.in_(_destinations(current)),
                 OrderLine.status.in_((LineStatus.PENDING, LineStatus.CLAIMED)),
-                Order.status == OrderStatus.PREPARING,
+                Order.status.in_((OrderStatus.PREPARING, OrderStatus.DELAYED)),
+                or_(
+                    OrderLine.status == LineStatus.PENDING,
+                    and_(OrderLine.status == LineStatus.CLAIMED, OrderLine.claimed_by_id == current.staff_id),
+                ),
             )
             .order_by(Order.created_at, OrderLine.created_at, OrderLine.id)
         )
@@ -162,4 +166,3 @@ def create_prep_router(event_bus: EventBus | None = None) -> APIRouter:
 
 
 router = create_prep_router()
-

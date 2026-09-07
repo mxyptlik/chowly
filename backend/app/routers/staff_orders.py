@@ -16,7 +16,9 @@ from app.order_schemas import (
     AcceptOrderIn,
     AmendOrderLineIn,
     AuditEventOut,
+    DelayOrderIn,
     ManualOrderCreateIn,
+    PreparerOut,
     ReassignOrderIn,
     ReasonedMutationIn,
     SetWaitTimeIn,
@@ -32,6 +34,7 @@ from app.order_service import (
     audit_payload,
     cancel_staff_order,
     create_manual_order,
+    delay_order,
     issue_order_realtime_token,
     raise_order_http,
     reassign_order,
@@ -99,6 +102,27 @@ def create_staff_orders_router(event_bus: EventBus | None = None) -> APIRouter:
         )
         return [staff_order_payload(db, row, current) for row in rows]
 
+    @router.get("/preparers", response_model=list[PreparerOut])
+    def list_preparers(
+        location_id: str | None = Query(default=None),
+        db: Session = Depends(get_db),
+        current: CurrentStaff = Depends(order_staff),
+    ) -> list[dict]:
+        location = _active_location(current, location_id)
+        rows = db.scalars(
+            select(StaffAccount)
+            .join(StaffLocationAssignment, StaffLocationAssignment.staff_id == StaffAccount.id)
+            .where(StaffAccount.tenant_id == current.tenant_id, StaffAccount.is_active.is_(True), StaffLocationAssignment.location_id == location)
+            .order_by(StaffAccount.name, StaffAccount.id)
+        ).unique()
+        result = []
+        for account in rows:
+            roles = list(db.scalars(select(StaffRoleAssignment.role).where(StaffRoleAssignment.tenant_id == current.tenant_id, StaffRoleAssignment.staff_id == account.id)))
+            preparer_roles = [role for role in roles if role in (StaffRole.CHEF, StaffRole.BARTENDER)]
+            if preparer_roles:
+                result.append({"id": account.id, "name": account.name, "roles": preparer_roles})
+        return result
+
     @router.get("/orders/{order_id}", response_model=StaffOrderOut)
     def order_detail(
         order_id: str,
@@ -142,6 +166,22 @@ def create_staff_orders_router(event_bus: EventBus | None = None) -> APIRouter:
             db.rollback()
             raise_order_http(error)
 
+    @router.post("/orders/{order_id}/delay", response_model=StaffOrderOut)
+    async def delay(
+        order_id: str,
+        payload: DelayOrderIn,
+        db: Session = Depends(get_db),
+        current: CurrentStaff = Depends(order_staff),
+    ) -> dict:
+        try:
+            order = scoped_order(db, order_id, current)
+            delay_order(db, order=order, current=current, reason=payload.reason, estimated_wait_minutes=payload.estimated_wait_minutes, expected_version=payload.expected_version)
+            await commit_and_publish(db, bus)
+            return staff_order_payload(db, order, current)
+        except OrderDomainError as error:
+            db.rollback()
+            raise_order_http(error)
+
     @router.post("/orders/{order_id}/accept", response_model=StaffOrderOut)
     async def accept(
         order_id: str,
@@ -156,6 +196,8 @@ def create_staff_orders_router(event_bus: EventBus | None = None) -> APIRouter:
                 order=order,
                 current=current,
                 waiter_id=payload.waiter_id,
+                chef_id=payload.chef_id,
+                bartender_id=payload.bartender_id,
                 estimated_wait_minutes=payload.estimated_wait_minutes,
                 expected_version=payload.expected_version,
             )
@@ -387,4 +429,3 @@ def create_staff_orders_router(event_bus: EventBus | None = None) -> APIRouter:
 
 
 router = create_staff_orders_router()
-

@@ -68,6 +68,7 @@ class OrderSource(StrEnum):
 class OrderStatus(StrEnum):
     SUBMITTED = "SUBMITTED"
     PREPARING = "PREPARING"
+    DELAYED = "DELAYED"
     READY = "READY_FOR_SERVICE"
     SERVED = "SERVED"
     PAID = "PAID"
@@ -562,6 +563,8 @@ class Order(Base):
     service_mode: Mapped[ServiceMode] = mapped_column(enum_column(ServiceMode, "service_mode"), default=ServiceMode.DINE_IN, server_default=ServiceMode.DINE_IN.value)
     status: Mapped[OrderStatus] = mapped_column(enum_column(OrderStatus, "order_status"), default=OrderStatus.SUBMITTED, server_default=OrderStatus.SUBMITTED.value)
     estimated_wait_minutes: Mapped[int | None] = mapped_column(Integer)
+    delay_reason: Mapped[str | None] = mapped_column(Text)
+    delayed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     cancellation_reason: Mapped[str | None] = mapped_column(Text)
     transfer_notice: Mapped[str | None] = mapped_column(Text)
     currency: Mapped[str] = mapped_column(String(3), default="NGN", server_default="NGN")

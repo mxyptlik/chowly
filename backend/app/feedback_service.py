@@ -21,7 +21,7 @@ from app.models import (
 )
 
 
-POST_SERVICE_STATUSES = frozenset({OrderStatus.SERVED, OrderStatus.PAID})
+FEEDBACK_STATUSES = frozenset({OrderStatus.DELAYED, OrderStatus.SERVED, OrderStatus.PAID})
 LOW_RATING_SCORES = frozenset({1, 2})
 LOW_RATING_PROMPT = "Would you like to tell the restaurant manager what went wrong?"
 
@@ -47,8 +47,8 @@ class FeedbackInvalid(FeedbackError):
 
 
 def ensure_post_service(order: Order) -> None:
-    if order.status not in POST_SERVICE_STATUSES:
-        raise FeedbackNotReady("Feedback and complaints are available only after the order is served.")
+    if order.status not in FEEDBACK_STATUSES:
+        raise FeedbackNotReady("Feedback and complaints are available when an order is delayed or after it is served.")
 
 
 def complaint_prompt(score: int) -> tuple[bool, str | None]:
@@ -283,4 +283,3 @@ def complaint_order_line_id(db: Session, complaint: Complaint) -> str | None:
     if not complaint.item_rating_id:
         return None
     return db.scalar(select(ItemRating.order_line_id).where(ItemRating.id == complaint.item_rating_id))
-

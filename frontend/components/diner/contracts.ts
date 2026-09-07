@@ -50,6 +50,8 @@ export type PublicOrder = {
   transfer_notice?: string | null;
   cancellation_reason?: string | null;
   estimated_wait_minutes?: number | null;
+  delay_reason?: string | null;
+  delayed_at?: string | null;
   total_amount: number;
   currency: string;
   version: string;

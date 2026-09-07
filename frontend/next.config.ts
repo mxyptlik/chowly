@@ -1,9 +1,19 @@
 import type { NextConfig } from "next";
 
+const apiOrigin = (
+  process.env.CHOWLY_API_ORIGIN ?? "http://127.0.0.1:8000"
+).replace(/\/$/, "");
+
 const nextConfig: NextConfig = {
   async rewrites() {
-    return [{ source: "/api/v1/:path*", destination: "http://127.0.0.1:8000/api/v1/:path*" }];
+    return [
+      {
+        source: "/api/v1/:path*",
+        destination: `${apiOrigin}/api/v1/:path*`,
+      },
+    ];
   },
+
   async headers() {
     return [
       {
@@ -15,7 +25,9 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/manifest.json",
-        headers: [{ key: "Content-Type", value: "application/manifest+json" }],
+        headers: [
+          { key: "Content-Type", value: "application/manifest+json" },
+        ],
       },
     ];
   },

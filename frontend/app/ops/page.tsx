@@ -24,10 +24,84 @@ function Operations() {
   useEffect(() => { void refresh().catch(reason => announce(message(reason), "danger")); const timer = window.setInterval(() => void refresh().catch(() => undefined), 8000); return () => window.clearInterval(timer); }, [announce, refresh]);
   useEffect(() => { const location = session?.active_location_id; if (!location) return; void Promise.all([apiClient.get<{ tables: TableChoice[] }>(`/staff/locations/${location}/manual-order-catalog`), apiClient.get<StaffMember[]>(`/staff/preparers?location_id=${encodeURIComponent(location)}`)]).then(([catalog, people]) => { setTables(catalog.tables); setPreparers(people); }).catch(reason => announce(message(reason), "danger")); }, [announce, session?.active_location_id]);
   useEffect(() => { if (!manager || !session?.active_location_id) return; void apiClient.get<StaffMember[]>(`/staff/members?location_id=${encodeURIComponent(session.active_location_id)}`).then(rows => setStaff(rows.filter(row => row.roles.includes("WAITER")))).catch(reason => announce(message(reason), "danger")); }, [announce, manager, session?.active_location_id]);
-  async function action(path: string, payload: object, label: string, options: { idempotent?: boolean; allowOffline=false; method?: "POST" | "PATCH" } = {}) { const { idempotent = false, allowOffline = false, method = "POST" } = options; if (!online && !allowOffline) { announce("This action needs a confirmed connection.", "warning"); return; } try { const headers = idempotent ? { "Idempotency-Key": crypto.randomUUID() } : undefined; if (method === "PATCH") await apiClient.patch(path, payload, { headers }); else await apiClient.post(path, payload, { headers }); announce(`${label} confirmed.`, "success"); setReason(""); await refresh(); } catch (reason) { announce(message(reason), "danger"); } }
-method:"PATCH"
-  const canSetWait = selected && ["PREPARING", "DELAYED", "READY_FOR_SERVICE"].includes(selected.status); const chefs = preparers.filter(person => person.roles.includes("CHEF")); const bartenders = preparers.filter(person => person.roles.includes("BARTENDER"));
-canSetWait=selected?.status==="PREPARING"||selected?.status==="READY_FOR_SERVICE"
+  async function action(
+      path: string,
+      payload: object,
+      label: string,
+      options: {
+        idempotent?: boolean;
+        allowOffline?: boolean;
+        method?: "POST" | "PATCH";
+      } = {},
+    ) {
+      const {
+        idempotent = false,
+        allowOffline = false,
+        method = "POST",
+      } = options;
+
+      if (!online && !allowOffline) {
+        announce(
+          "This action needs a confirmed connection.",
+          "warning",
+        );
+        return;
+      }
+
+      try {
+        const headers = idempotent
+          ? {
+              "Idempotency-Key": crypto.randomUUID(),
+            }
+          : undefined;
+
+        if (method === "PATCH") {
+          await apiClient.patch(
+            path,
+            payload,
+            { headers },
+          );
+        } else {
+          await apiClient.post(
+            path,
+            payload,
+            { headers },
+          );
+        }
+
+        announce(
+          `${label} confirmed.`,
+          "success",
+        );
+
+        setReason("");
+
+        await refresh();
+      } catch (reason) {
+        announce(
+          message(reason),
+          "danger",
+        );
+      }
+    }
+
+    const canSetWait =
+      selected !== null &&
+      [
+        "PREPARING",
+        "DELAYED",
+        "READY_FOR_SERVICE",
+      ].includes(selected.status);
+
+    const chefs = preparers.filter(
+      (person) =>
+        person.roles.includes("CHEF"),
+    );
+
+    const bartenders = preparers.filter(
+      (person) =>
+        person.roles.includes("BARTENDER"),
+    );
   return <StaffChrome eyebrow="Service floor" title="Keep the room in motion."><ManualOrderBuilder locationId={session?.active_location_id ?? ""} enabled={online} onCreated={refresh} /><div className="staff-layout">
     <section className="panel"><h2>Order queue</h2><ActionButton tone="quiet" onClick={() => void refresh()}>Refresh</ActionButton><div className="order-list">{orders.map(order => <button className="order-card" onClick={() => { setSelected(order); setWait(String(order.estimated_wait_minutes ?? order.recommended_wait_minutes)); setChef(""); setBartender(""); }} key={order.id}><span><b>{order.table_label ?? "Takeaway"}</b><small>{order.customer?.name ?? "Customer"} · {order.lines?.length ?? 0} lines</small></span><span><StatusBadge status={order.status} /><strong>{money.format(Number(order.total_amount))}</strong></span></button>)}</div></section>
     <section className="panel"><h2>{selected ? "Order control" : "Select an order"}</h2>{selected && <><p className="order-summary">{selected.table_label ?? "Takeaway"} · Owner: {selected.owner_name ?? "Unassigned"}{selected.customer && <><br /><a href={`tel:${selected.customer.phone}`}>{selected.customer.name} · {selected.customer.phone}</a>{selected.customer.email && <> · {selected.customer.email}</>}</>}</p>{selected.delay_reason && <Notice tone="warning" title="Delay reason">{selected.delay_reason}</Notice>}<ul className="line-list">{selected.lines.map(line => <li key={line.id}><b>{line.quantity} × {line.item_name}</b><span>{line.status}{line.modifiers?.length ? ` · ${line.modifiers.map(item => item.name).join(", ")}` : ""}{line.special_instruction ? ` · ${line.special_instruction}` : ""}</span></li>)}</ul>
